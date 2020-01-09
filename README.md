@@ -1,51 +1,71 @@
-# Salesforce REST API Client for Laravel 5
-[![Laravel](https://img.shields.io/badge/Laravel-5.2-orange.svg?style=flat-square)](http://laravel.com)
+
+# Salesforce REST API Client for Laravel <img align="right" src="https://raw.githubusercontent.com/omniphx/images/master/Forrest.png">
+
+[![Laravel](https://img.shields.io/badge/Laravel-6.0-orange.svg?style=flat-square)](http://laravel.com)
 [![Latest Stable Version](https://img.shields.io/packagist/v/omniphx/forrest.svg?style=flat-square)](https://packagist.org/packages/omniphx/forrest)
 [![Total Downloads](https://img.shields.io/packagist/dt/omniphx/forrest.svg?style=flat-square)](https://packagist.org/packages/omniphx/forrest)
 [![License](https://img.shields.io/packagist/l/omniphx/forrest.svg?style=flat-square)](https://packagist.org/packages/omniphx/forrest)
 [![Build Status](https://img.shields.io/travis/omniphx/forrest.svg?style=flat-square)](https://travis-ci.org/omniphx/forrest)
 
+
+
+
 Salesforce/Force.com REST API client for Laravel. While it acts as more of a wrapper of the API methods, it should provide you with all the flexibility you will need to interact with the REST service.
 
-While this package is built for Laravel, it has been decoupled so that it can be extended into any framework or vanilla PHP application. Currently the only support is for Larevel 4, 5 and Lumen.
+Currently the only support is for Laravel and Lumen.
+
+Interested in Eloquent Salesforce Models? Check out [@roblesterjr04](https://github.com/roblesterjr04)'s [EloquentSalesForce](https://github.com/roblesterjr04/EloquentSalesForce) project that utilizes Forrest as it's API layer.
 
 ## Installation
 >If you are upgrading to Version 2.0, be sure to re-publish your config file.
 
 Forrest can be installed through composer. Open your `composer.json` file and add the following to the `require` key:
-
-    "omniphx/forrest": "2.*"
-
+```php
+"omniphx/forrest": "2.*"
+```
 Next run `composer update` from the command line to install the package.
 
-If you are using Laravel, add the service provider and alias to your `config/app.php` file:
+### Laravel Installation
 
-    Omniphx\Forrest\Providers\Laravel\ForrestServiceProvider::class
+The package will automatically register the service provider and `Forrest` alias for Laravel `>=5.5`. For earlier versions, add the service provider and alias to your `config/app.php` file:
 
-    'Forrest' => Omniphx\Forrest\Providers\Laravel\Facades\Forrest::class
+```php
+Omniphx\Forrest\Providers\Laravel\ForrestServiceProvider::class
+'Forrest' => Omniphx\Forrest\Providers\Laravel\Facades\Forrest::class
+```
 
 >For Laravel 4, add `Omniphx\Forrest\Providers\Laravel4\ForrestServiceProvider` in `app/config/app.php`. Alias will remain the same.
 
-### Lumen Installation 
+### Lumen Installation
 
-You should copy the config file from `src/config/config.php` and add it to a `forrest.php` configuration file under a config directory in the root of your application. 
-
-Then you'll utilize the Lumen service provider by registering it in the `bootstrap/app.php` file. 
-
-```
+```php
+class_alias('Omniphx\Forrest\Providers\Laravel\Facades\Forrest', 'Forrest');
 $app->register(Omniphx\Forrest\Providers\Lumen\ForrestServiceProvider::class);
 $app->configure('forrest');
+$app->withFacades();
 ```
-
+Then you'll utilize the Lumen service provider by registering it in the `bootstrap/app.php` file.
 
 ### Configuration
 You will need a configuration file to add your credentials. Publish a config file using the `artisan` command:
 ```bash
 php artisan vendor:publish
 ```
-You can find the config file in: `config/forrest.php`
+This will publish a `config/forrest.php` file that can switch between authentication types as well as other settings.
 
->For Laravel 4, run `php artisan config:publish omniphx/forrest`. It will be found in `app/config/omniphx/forrest/config.php`
+After adding the config file, update your `.env` to include the following values (details for getting a consumer key and secret are outlined below):
+```
+CONSUMER_KEY=123455
+CONSUMER_SECRET=ABCDEF
+CALLBACK_URI=https://test.app/callback
+LOGIN_URL=https://login.salesforce.com
+USERNAME=mattjmitchener@gmail.com
+PASSWORD=password123
+```
+
+>For Lumen, you should copy the config file from `src/config/config.php` and add it to a `forrest.php` configuration file under a config directory in the root of your application.
+
+>For Laravel 4, run `php artisan config:publish omniphx/forrest` which create `app/config/omniphx/forrest/config.php`
 
 ## Getting Started
 ### Setting up a Connected App
@@ -93,6 +113,38 @@ Route::get('/authenticate', function()
     return Redirect::to('/');
 });
 ```
+##### SOAP authentication flow
+(When you cannot create a connected App in Salesforce)
+
+1. Salesforce allows individual logins via a SOAP Login
+2. The Bearer access token returned from the SOAP login can be used similar to Oauth key
+3. Update your config file and set the `authentication` value to `UserPasswordSoap`
+4. Update your config file with values for `loginURL`, `username`, and `password`.
+With the Username Password SOAP flow, you can directly authenticate with the `Forrest::authenticate()` method.
+
+>To use this authentication you can add your username, and password to the config file. Security token might need to be ammended to your password unless your IP address is whitelisted.
+
+```php
+Route::get('/authenticate', function()
+{
+    Forrest::authenticate();
+    return Redirect::to('/');
+});
+```
+
+If your application requires logging in to salesforce as different users, you can alternatively pass in the login url, username, and password to the `Forrest::authenticateUser()` method.
+
+>Security token might need to be ammended to your password unless your IP address is whitelisted.
+
+```php
+Route::Post('/authenticate', function(Request $request)
+{
+    Forrest::authenticateUser('https://login.salesforce.com',$request->username, $request->password);
+    return Redirect::to('/');
+});
+```
+
+
 
 #### Custom login urls
 Sometimes users will need to connect to a sandbox or custom url. To do this, simply pass the url as an argument for the authenticatation method:
@@ -112,8 +164,8 @@ After authentication, your app will store an encrypted authentication token whic
 ```php
 Forrest::query('SELECT Id FROM Account');
 ```
-Result:
-```JavaScript
+Sample result:
+```JSON
 {
     "totalSize": 2,
     "done": true,
@@ -136,8 +188,10 @@ Result:
 }
 ```
 If you are querying more than 2000 records, you response will include:
-```
-"nextRecordsUrl" : "/services/data/v20.0/query/01gD0000002HU6KIAW-2000"
+```JSON
+{
+    "nextRecordsUrl" : "/services/data/v20.0/query/01gD0000002HU6KIAW-2000"
+}
 ```
 
 Simply, call `Forrest::next($nextRecordsUrl)` to return the next 2000 records.
@@ -145,36 +199,38 @@ Simply, call `Forrest::next($nextRecordsUrl)` to return the next 2000 records.
 ### Create a new record
 Records can be created using the following format.
 ```php
-$body = ['Name' => 'New Account'];
 Forrest::sobjects('Account',[
     'method' => 'post',
-    'body'   => $body]);
+    'body'   => ['Name' => 'Dunder Mifflin']
+]);
 ```
 
 ### Update a record
 Update a record with the PUT method.
 
 ```php
-$body = [
-    'Name'  => 'Acme'
-    'Phone' => '555-555-5555'];
-
 Forrest::sobjects('Account/001i000000xxx',[
     'method' => 'put',
-    'body'   => $body]);
+    'body'   => [
+        'Name'  => 'Dunder Mifflin',
+        'Phone' => '555-555-5555'
+    ]
+]);
 ```
 
 ### Upsert a record
 Update a record with the PATCH method and if the external Id doesn't exist, it will insert a new record.
 
 ```php
-$body = [
-    'Phone' => '555-555-5555',
-    'External_Id__c' => 'XYZ1234'];
+$externalId = 'XYZ1234';
 
-Forrest::sobjects('Account',[
+Forrest::sobjects('Account/External_Id__c/' + $externalId, [
     'method' => 'patch',
-    'body'   => $body]);
+    'body'   => [
+        'Name'  => 'Dunder Mifflin',
+        'Phone' => '555-555-5555'
+    ]
+]);
 ```
 
 ### Delete a record
@@ -184,22 +240,38 @@ Delete a record with the DELETE method.
 Forrest::sobjects('Account/001i000000xxx', ['method' => 'delete']);
 ```
 
+### Setting headers
+Sometimes you need the ability to set custom headers (e.g., creating a Lead with an assignment rule)
+```php
+Forrest::sobjects('Lead',[
+    'method' => 'post',
+    'body' => [
+        'Company' => 'Dunder Mifflin',
+        'LastName' => 'Scott'
+    ],
+    'headers' => [
+        'Sforce-Auto-Assign' => '01Q1N000000yMQZUA2'
+    ]
+]);
+```
+>To disable assignment rules, use `'Sforce-Auto-Assign' => 'false'`
+
 ### XML format
 Change the request/response format to XML with the `format` key or make it default in your config file.
 
 ```php
-Forrest::describe('Account',['format'=>'xml']);
+Forrest::sobjects('Account',['format'=>'xml']);
 ```
 
 ## API Requests
 
 With the exception of the `search` and `query` resources, all resources are requested dynamically using method overloading.
 
-First, determine which resources you have access to by calling:
+You can determine which resources you have access to by calling with the resource method
 ```php
 Forrest::resources();
 ```
-Result:
+This sample output shows the resourses available to call via the API:
 ```php
 Array
 (
@@ -220,24 +292,88 @@ Array
     [appMenu] => /services/data/v30.0/appMenu
 )
 ```
-Next, call resources by referring to the specified key. For instance:
+From the list above, I can call resources by referring to the specified key.
 ```php
 Forrest::theme();
 ```
-or
+Or...
 ```php
 Forrest::appMenu();
 ```
 
-Resource urls can be extended by passing additional parameters into the first argument:
+Additional resource url parameters can also be passed in
 ```php
 Forrest::sobjects('Account/describe/approvalLayouts/');
 ```
 
-You can also add optional parameters to requests:
+As well as new formatting options, headers or other configurations
 ```php
 Forrest::theme(['format'=>'xml']);
 ```
+
+### Upsert multiple records (Bulk API 2.0)
+
+Bulk API requests are especially handy when you need to quickly load large amounts of data into your Salesforce org. The key differences is that it requires at least three separate requests (Create, Add, Close), and the data being loaded is sent in a CSV format.
+
+To illustrate, following are three requests to upsert a CSV of `Contacts` records.
+
+#### Create
+
+Create a bulk upload job with the POST method, the body contains the following job properties:
+
+- `object` is the type of objects you're loading (they must all be the same type per job)
+- `externalIdFieldName` is the external ID, if this exists it'll update and if it doesn't a new record will be inserted. Only needed for upsert operations.
+- `contentType` is CSV, this is currently the only valid value.
+- `operation` is set to `upsert` to both add and update records.
+
+We're storing the response in `$bulkJob` in order to reference the unique Job ID in the Add and Close requests below.
+
+> See [Create a Job](https://developer.salesforce.com/docs/atlas.en-us.api_bulk_v2.meta/api_bulk_v2/create_job.htm) for the full list of options available here.
+
+```php
+$bulkJob = Forrest::jobs('ingest', [
+    'method' => 'post',
+    'body' => [
+        "object" => "Contact",
+        "externalIdFieldName" => "externalId",
+        "contentType" => "CSV",
+        "operation" => "upsert"
+    ]
+]);
+```
+
+#### Add Data
+
+Using the Job ID from the Create POST request, you then send the CSV data to be processed using a PUT request. This assumes you've loaded your CSV contents to `$csv`
+
+> See [Prepare CSV Files](https://developer.salesforce.com/docs/atlas.en-us.api_bulk_v2.meta/api_bulk_v2/datafiles_prepare_csv.htm) for details on how it should be formatted.
+
+```php
+Forrest::jobs('ingest/' . $bulkJob['id'] . '/batches', [
+    'method' => 'put',
+    'headers' => [
+        'Content-Type' => 'text/csv'
+    ],
+    'body' => $csv
+]);
+```
+
+#### Close
+
+You must close the job before the records can be processed, to do so you send an `UploadComplete` state using a PATCH request to the Job ID.
+
+> See [Close or Abort a Job](https://developer.salesforce.com/docs/atlas.en-us.api_bulk_v2.meta/api_bulk_v2/close_job.htm) for more options and details on how to abort a job.
+
+```php
+$response = Forrest::jobs('ingest/' . $bulkJob['id'] . '/', [
+    'method' => 'patch',
+    'body' => [
+        "state" => "UploadComplete"
+    ]
+]);
+```
+
+> **Bulk API 2.0 is available in API version 41.0 and later**. For more information on Salesforce Bulk API, check out the [official documentation](https://developer.salesforce.com/docs/atlas.en-us.api_bulk_v2.meta/api_bulk_v2/introduction_bulk_api_2.htm) and [this tutorial](https://trailhead.salesforce.com/en/content/learn/modules/api_basics/api_basics_bulk) on how to perform a successful Bulk Upload.
 
 ### Additional API Requests
 
@@ -317,4 +453,4 @@ Event::listen('forrest.response', function($request, $response) {
 });
 ```
 
-For more information about Guzzle responses and event listeners, refer to their [documentation](http://guzzle.readthedocs.org/en/latest/http-messages.html#responses).
+For more information about Guzzle responses and event listeners, refer to their [documentation](http://guzzle.readthedocs.org).

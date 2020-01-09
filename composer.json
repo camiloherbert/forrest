@@ -1,6 +1,6 @@
 {
     "name": "omniphx/forrest",
-    "description": "Salesforce / Force.com REST API Client for Laravel 5",
+    "description": "A Laravel library for Salesforce",
     "license":"MIT",
     "keywords":["salesforce", "laravel", "rest", "force.com", "force"],
     "authors": [
@@ -12,19 +12,32 @@
         }
     ],
     "require": {
-        "php": ">=5.5.0",
-        "illuminate/cache": ">=4.0",
-        "illuminate/session": ">=4.0",
-        "illuminate/config": ">=4.0",
-        "guzzlehttp/guzzle": "~6.0"
+        "php": ">=5.6",
+        "illuminate/cache" : ">5",
+        "illuminate/contracts" : ">5",
+        "illuminate/config": ">5",
+        "illuminate/http" : ">5",
+        "illuminate/routing" : ">5",
+        "guzzlehttp/guzzle": ">6.0"
     },
     "require-dev": {
-        "phpspec/phpspec": "~2.0"
+        "phpspec/phpspec": "^3.0",
+        "henrikbjorn/phpspec-code-coverage": "^3.0"
     },
     "autoload": {
         "psr-4": {
             "Omniphx\\Forrest\\": "src/Omniphx/Forrest/"
         }
     },
-    "minimum-stability": "stable"
+    "minimum-stability": "stable",
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Omniphx\\Forrest\\Providers\\Laravel\\ForrestServiceProvider"
+            ],
+            "aliases": {
+                "Forrest": "Omniphx\\Forrest\\Providers\\Laravel\\Facades\\Forrest"
+            }
+        }
+    }
 }
